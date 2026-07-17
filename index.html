@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Flappy Goku — Namek Flight</title>
+<meta name="description" content="Ride the Flying Nimbus with Goku across the green skies of Planet Namek. A fast, free flappy-style browser game built for mobile — tap to fly, dodge the pillars, go Super Saiyan.">
+<meta name="theme-color" content="#1f7a4d">
+<!-- Set canonical + og:url to the real URL when deployed -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Flappy Goku — Namek Flight">
+<meta property="og:description" content="Tap to fly Goku's Nimbus through the pillars of Planet Namek. Score 15 to go Super Saiyan.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Flappy Goku — Namek Flight">
+<meta name="twitter:description" content="Tap to fly Goku's Nimbus through the pillars of Planet Namek. Score 15 to go Super Saiyan.">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"VideoGame","name":"Flappy Goku — Namek Flight","description":"A flappy-style fan game: ride the Flying Nimbus across Planet Namek.","genre":"Arcade","gamePlatform":"Web Browser","applicationCategory":"Game","playMode":"SinglePlayer"}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --namek-deep:#15563e;
+    --namek-sky:#7ec850;
+    --namek-horizon:#eaf7b0;
+    --water:#0e5a52;
+    --nimbus:#ffc53d;
+    --gi-orange:#f2811d;
+    --gi-blue:#2456a6;
+    --ui-cream:#fff8e2;
+    --ink:#17301f;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    background:radial-gradient(120% 100% at 50% 0%, #2f8f5b 0%, #1f7a4d 45%, #123f2e 100%);
+    font-family:"Nunito",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    color:var(--ui-cream);
+    overflow:hidden;
+    overscroll-behavior:none;
+    -webkit-user-select:none;user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    display:flex;align-items:center;justify-content:center;
+  }
+  #stage{
+    position:relative;
+    width:100%;height:100dvh;
+    max-width:520px;
+    box-shadow:0 0 80px rgba(0,0,0,.45);
+    overflow:hidden;
+  }
+  @media (min-width:560px){
+    #stage{height:min(100dvh, 92vh);border-radius:18px}
+  }
+  canvas{display:block;width:100%;height:100%;touch-action:none}
+  /* ---------- overlays ---------- */
+  .overlay{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:24px;gap:10px;
+    pointer-events:none;
+  }
+  .overlay.hidden{display:none}
+  .title{
+    font-family:"Bangers",Impact,"Arial Black",cursive;
+    font-size:clamp(56px, 17vw, 96px);
+    line-height:.9;
+    letter-spacing:.03em;
+    color:#ffd21f;
+    -webkit-text-stroke:2px #b3400c;
+    text-shadow:0 4px 0 #b3400c, 0 9px 0 rgba(23,48,31,.55), 0 14px 28px rgba(0,0,0,.35);
+    transform:rotate(-3deg);
+    animation:titleFloat 3.2s ease-in-out infinite;
+  }
+  .title small{
+    display:block;
+    font-size:.36em;
+    letter-spacing:.22em;
+    color:#eaffd0;
+    -webkit-text-stroke:1px #145a3a;
+    text-shadow:0 3px 0 #145a3a, 0 8px 18px rgba(0,0,0,.35);
+  }
+  @keyframes titleFloat{
+    0%,100%{transform:rotate(-3deg) translateY(0)}
+    50%{transform:rotate(-3deg) translateY(-8px)}
+  }
+  .tap-hint{
+    font-family:"Bangers",Impact,cursive;
+    font-size:clamp(22px, 6vw, 30px);
+    letter-spacing:.09em;
+    color:var(--ui-cream);
+    text-shadow:0 2px 0 rgba(0,0,0,.4);
+    animation:pulse 1.1s ease-in-out infinite;
+    margin-top:6vh;
+  }
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.96)}}
+  .hint-sub{font-size:14px;font-weight:600;opacity:.85;max-width:280px}
+  /* ---------- HUD score ---------- */
+  #score{
+    position:absolute;top:max(18px, env(safe-area-inset-top));left:0;right:0;
+    text-align:center;
+    font-family:"Bangers",Impact,cursive;
+    font-size:clamp(48px,13vw,72px);
+    color:#fff;
+    -webkit-text-stroke:2px #17301f;
+    text-shadow:0 4px 0 rgba(23,48,31,.85), 0 8px 20px rgba(0,0,0,.3);
+    pointer-events:none;
+    display:none;
+  }
+  #score.pop{animation:scorePop .18s ease}
+  @keyframes scorePop{50%{transform:scale(1.3)}}
+  /* ---------- game over card ---------- */
+  #gameover .card{
+    background:linear-gradient(175deg, #fffbe9 0%, #ffedc2 100%);
+    color:var(--ink);
+    border:3px solid #b3400c;
+    border-radius:20px;
+    padding:22px 26px 20px;
+    width:min(330px, 86%);
+    box-shadow:0 6px 0 #7c2c08, 0 22px 44px rgba(0,0,0,.45);
+    transform:rotate(-1.2deg);
+    pointer-events:auto;
+  }
+  #gameover h2{
+    font-family:"Bangers",Impact,cursive;
+    font-size:44px;letter-spacing:.05em;line-height:1;
+    color:#d43a12;
+    -webkit-text-stroke:1px #7c2c08;
+    text-shadow:0 3px 0 rgba(124,44,8,.35);
+    margin-bottom:4px;
+  }
+  #medal{
+    font-family:"Bangers",Impact,cursive;
+    font-size:19px;letter-spacing:.12em;
+    color:#146b43;
+    min-height:24px;
+  }
+  .scores{
+    display:flex;justify-content:center;gap:26px;margin:12px 0 16px;
+  }
+  .scores .lbl{font-size:12px;font-weight:800;letter-spacing:.14em;color:#8a5a1e}
+  .scores .val{
+    font-family:"Bangers",Impact,cursive;
+    font-size:42px;line-height:1;color:var(--ink);
+  }
+  .scores .val.new{color:#d43a12}
+  button.play{
+    font-family:"Bangers",Impact,cursive;
+    font-size:26px;letter-spacing:.09em;
+    background:linear-gradient(180deg,#ffd21f,#ff9d00);
+    color:#5d2400;
+    border:3px solid #7c2c08;
+    border-radius:14px;
+    padding:12px 30px;
+    min-height:52px;min-width:190px;
+    cursor:pointer;
+    box-shadow:0 5px 0 #7c2c08;
+    transition:transform .08s ease, box-shadow .08s ease;
+  }
+  button.play:active{transform:translateY(4px);box-shadow:0 1px 0 #7c2c08}
+  button.play:focus-visible, #mute:focus-visible{
+    outline:3px solid #1d6cff;outline-offset:3px;
+  }
+  /* ---------- mute ---------- */
+  #mute{
+    position:absolute;
+    top:max(14px, env(safe-area-inset-top));
+    right:14px;
+    width:46px;height:46px;
+    border-radius:12px;
+    border:2px solid rgba(255,248,226,.55);
+    background:rgba(18,63,46,.55);
+    color:var(--ui-cream);
+    font-size:20px;
+    cursor:pointer;
+    backdrop-filter:blur(4px);
+    -webkit-backdrop-filter:blur(4px);
+    z-index:5;
+  }
+  #flash{
+    position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;
+  }
+  .credit{
+    position:absolute;bottom:max(10px, env(safe-area-inset-bottom));left:0;right:0;
+    text-align:center;font-size:11px;font-weight:600;opacity:.6;pointer-events:none;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .title,.tap-hint{animation:none}
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" aria-label="Flappy Goku game — tap, click, or press space to make Goku fly"></canvas>
+  <div id="flash"></div>
+  <div id="score" aria-live="off">0</div>
+
+  <div id="menu" class="overlay">
+    <h1 class="title">FLAPPY<br>GOKU<small>NAMEK FLIGHT</small></h1>
+    <p class="tap-hint" id="startHint">TAP TO FLY!</p>
+    <p class="hint-sub">Keep Goku on his Nimbus and weave through the Ajisa trees of Namek. Reach 15 to power up…</p>
+  </div>
+
+  <div id="paused" class="overlay hidden">
+    <p class="tap-hint">PAUSED — TAP TO RESUME</p>
+  </div>
+
+  <div id="gameover" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="goTitle">
+    <div class="card">
+      <h2 id="goTitle">KNOCKED OUT!</h2>
+      <p id="medal"></p>
+      <div class="scores">
+        <div><div class="lbl">SCORE</div><div class="val" id="finalScore">0</div></div>
+        <div><div class="lbl">BEST</div><div class="val" id="bestScore">0</div></div>
+      </div>
+      <button class="play" id="retry" type="button">FLY AGAIN</button>
+    </div>
+  </div>
+
+  <button id="mute" type="button" aria-label="Mute sound" aria-pressed="false">🔊</button>
+  <p class="credit">Fan-made tribute · not affiliated with the Dragon Ball franchise</p>
+</div>
+
+<script>
+"use strict";
+/* =========================================================
+   FLAPPY GOKU — NAMEK FLIGHT
+   Single-file canvas game. Virtual world height is fixed
+   (VH=720); everything scales from that so physics feel
+   identical on every screen.
+========================================================= */
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const stage = document.getElementById("stage");
+const scoreEl = document.getElementById("score");
+const menuEl = document.getElementById("menu");
+const overEl = document.getElementById("gameover");
+const pausedEl = document.getElementById("paused");
+const flashEl = document.getElementById("flash");
+const finalEl = document.getElementById("finalScore");
+const bestEl = document.getElementById("bestScore");
+const medalEl = document.getElementById("medal");
+const retryBtn = document.getElementById("retry");
+const muteBtn = document.getElementById("mute");
+
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- sizing ---------- */
+const VH = 720;                 // virtual height (world units)
+let VW = 405;                   // virtual width, set on resize
+let scaleF = 1, cw = 0, ch = 0;
+
+function resize(){
+  const r = stage.getBoundingClientRect();
+  cw = r.width; ch = r.height;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(cw * dpr);
+  canvas.height = Math.round(ch * dpr);
+  scaleF = (ch * dpr) / VH;
+  VW = (cw * dpr) / scaleF;
+}
+resize();
+addEventListener("resize", resize);
+addEventListener("orientationchange", () => setTimeout(resize, 120));
+
+/* ---------- tuning ---------- */
+const GRAVITY   = 1500;
+const FLAP_V    = -430;
+const MAX_FALL  = 720;
+const PIPE_W    = 60;
+const PLAYER_X  = 0.30;      // fraction of VW
+const HIT_R     = 27;        // player collision radius
+const WATER_H   = 108;       // water band height
+const SS_SCORE  = 15;        // Super Saiyan burst every N points
+const BURST_DUR = 3;         // seconds of obstacle-smashing flight
+
+/* ---------- state ---------- */
+let mode = "menu";           // menu | play | dying | over
+let paused = false;
+let t = 0, last = 0;
+let bgScroll = 0;            // accumulated parallax distance (never resets, never jumps)
+let player, pipes, parts, popups, rings, score, best, speed, gap, spawnX, shake, ssOn, ssFlash, waterOffs, deadTimer, burstT, nextSS, graceT;
+best = +(localStorage.getItem("fg_best") || 0);
+
+function reset(){
+  player = { y: VH*0.45, vy: 0, rot: 0, flapT: 9 };
+  pipes = []; parts = []; popups = []; rings = [];
+  score = 0; speed = 205; gap = 244;
+  spawnX = VW + 160;
+  shake = 0; ssOn = false; ssFlash = 0; waterOffs = 0; deadTimer = 0;
+  burstT = 0; nextSS = SS_SCORE; graceT = 0;
+  scoreEl.textContent = "0";
+}
+reset();
+
+/* ---------- audio (WebAudio synth, created on first gesture) ---------- */
+let AC = null, muted = localStorage.getItem("fg_mute") === "1";
+function audio(){
+  if (!AC){ try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+  if (AC && AC.state === "suspended") AC.resume();
+  return AC;
+}
+function tone(freq, dur, type, vol, slide){
+  const ac = audio(); if(!ac || muted) return;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, ac.currentTime);
+  if (slide) o.frequency.exponentialRampToValueAtTime(slide, ac.currentTime + dur);
+  g.gain.setValueAtTime(vol, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur);
+  o.connect(g).connect(ac.destination);
+  o.start(); o.stop(ac.currentTime + dur);
+}
+function noise(dur, vol){
+  const ac = audio(); if(!ac || muted) return;
+  const n = ac.sampleRate * dur, buf = ac.createBuffer(1, n, ac.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i=0;i<n;i++) d[i] = (Math.random()*2-1) * (1 - i/n);
+  const s = ac.createBufferSource(); s.buffer = buf;
+  const g = ac.createGain(); g.gain.value = vol;
+  const f = ac.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 900;
+  s.connect(f).connect(g).connect(ac.destination); s.start();
+}
+const sfx = {
+  flap(){ tone(340, .12, "triangle", .18, 620); },
+  score(){ tone(760, .09, "square", .12); setTimeout(()=>tone(1010,.12,"square",.12), 70); },
+  hit(){ noise(.28, .5); tone(150, .3, "sawtooth", .25, 60); },
+  power(){ tone(240, .5, "sawtooth", .2, 1400); setTimeout(()=>tone(1400,.35,"square",.14,1800),240); }
+};
+/* ---------- background music ----------
+   Original high-energy anime-rock loop composed for this game
+   (an homage to the DBZ vibe — not the copyrighted theme). */
+const BPM = 152, STEP8 = 60/BPM/2;               // 8th-note grid
+const NOTE = m => 440 * Math.pow(2, (m-69)/12);  // midi → Hz
+const MELODY = [                                  // 8 bars of 8ths, 0 = rest
+  76,0,76,80, 81,0,80,76,   78,0,78,80, 78,0,73,0,
+  76,0,76,80, 81,0,83,81,   80,78,76,0, 78,0,0,0,
+  73,0,76,0,  80,0,81,83,   85,0,83,81, 80,0,78,76,
+  78,80,81,0, 80,78,76,73,  76,0,0,0,   0,0,76,80
+];
+const BASSLINE = [                                // 4 bars, loops twice per melody pass
+  40,40,52,40, 40,52,40,40,  37,37,49,37, 37,49,37,37,
+  45,45,57,45, 45,57,45,45,  47,47,59,47, 47,59,47,47
+];
+let musTimer = null, musStep = 0, musNext = 0;
+function musicNote(freq, when, dur, type, vol){
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.exponentialRampToValueAtTime(vol, when + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+  o.connect(g).connect(AC.destination);
+  o.start(when); o.stop(when + dur + 0.05);
+}
+function drum(when, kind){
+  if (kind === "kick"){
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(150, when);
+    o.frequency.exponentialRampToValueAtTime(45, when + 0.1);
+    g.gain.setValueAtTime(0.4, when);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.14);
+    o.connect(g).connect(AC.destination);
+    o.start(when); o.stop(when + 0.15);
+  } else {
+    const dur = kind === "snare" ? 0.1 : 0.035;
+    const n = Math.ceil(AC.sampleRate * dur), buf = AC.createBuffer(1, n, AC.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i=0;i<n;i++) d[i] = (Math.random()*2-1)*(1-i/n);
+    const s = AC.createBufferSource(); s.buffer = buf;
+    const f = AC.createBiquadFilter(); f.type = "highpass";
+    f.frequency.value = kind === "snare" ? 1800 : 6000;
+    const g = AC.createGain();
+    g.gain.value = kind === "snare" ? 0.16 : 0.06;
+    s.connect(f).connect(g).connect(AC.destination);
+    s.start(when);
+  }
+}
+function scheduleMusic(){
+  if (!AC || muted) return;
+  while (musNext < AC.currentTime + 0.25){
+    const s = musStep % 64;
+    const m = MELODY[s];
+    if (m) musicNote(NOTE(m), musNext, STEP8*0.95, "square", 0.055);
+    const b = BASSLINE[s % 32];
+    if (b) musicNote(NOTE(b), musNext, STEP8*0.9, "sawtooth", 0.05);
+    if (s % 8 === 0) drum(musNext, "kick");
+    if (s % 8 === 4) drum(musNext, "snare");
+    drum(musNext, "hat");
+    musNext += STEP8; musStep++;
+  }
+}
+function startMusic(){
+  if (musTimer || muted || !audio()) return;
+  musNext = AC.currentTime + 0.1;
+  musStep = 0;
+  musTimer = setInterval(scheduleMusic, 120);
+}
+function stopMusic(){
+  clearInterval(musTimer);
+  musTimer = null;
+}
+
+function setMute(m){
+  muted = m;
+  localStorage.setItem("fg_mute", m ? "1" : "0");
+  muteBtn.textContent = m ? "🔇" : "🔊";
+  muteBtn.setAttribute("aria-pressed", String(m));
+  muteBtn.setAttribute("aria-label", m ? "Unmute sound" : "Mute sound");
+  if (m) stopMusic();
+  else if (AC && mode !== "over") startMusic();
+}
+setMute(muted);
+muteBtn.addEventListener("click", e => { e.stopPropagation(); setMute(!muted); });
+
+/* ---------- input ---------- */
+function flap(){
+  if (paused){ paused = false; pausedEl.classList.add("hidden"); last = 0; audio(); startMusic(); return; }
+  if (mode === "menu"){ startGame(); return; }
+  if (mode === "over") return;             // buttons handle restart
+  if (mode !== "play") return;
+  if (burstT > 0) return;             // goku is flying on his own
+  player.vy = FLAP_V;
+  player.flapT = 0;
+  sfx.flap();
+  spawnFlapPuff();
+  spawnRing(VW*PLAYER_X - 8, player.y + 20, "195,228,255", 240, 2.5);
+}
+function startGame(){
+  reset();
+  mode = "play";
+  menuEl.classList.add("hidden");
+  overEl.classList.add("hidden");
+  scoreEl.style.display = "block";
+  audio();
+  startMusic();
+}
+stage.addEventListener("pointerdown", e => {
+  if (e.target === muteBtn || e.target === retryBtn) return;
+  e.preventDefault();
+  flap();
+});
+stage.addEventListener("touchstart", e => {
+  if (e.target === muteBtn || e.target === retryBtn) return;
+  e.preventDefault();
+}, {passive:false});
+addEventListener("keydown", e => {
+  if (e.code === "Space" || e.code === "ArrowUp" || e.code === "Enter"){
+    if (document.activeElement === muteBtn && e.code === "Enter") return;
+    e.preventDefault();
+    if (mode === "over"){ startGame(); return; }
+    flap();
+  }
+});
+retryBtn.addEventListener("click", e => { e.stopPropagation(); startGame(); });
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && mode === "play"){
+    paused = true;
+    pausedEl.classList.remove("hidden");
+    stopMusic();
+  }
+});
+
+/* ---------- helpers ---------- */
+const rand = (a,b) => a + Math.random()*(b-a);
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+// deterministic pseudo-random for scenery layout
+function prand(seed){ const x = Math.sin(seed*127.1+311.7)*43758.5453; return x - Math.floor(x); }
+
+/* ---------- particles ---------- */
+function spawnFlapPuff(){
+  const n = reducedMotion ? 3 : 8;
+  const px = VW*PLAYER_X, py = player.y + 26;
+  for (let i=0;i<n;i++){
+    parts.push({ x:px+rand(-18,10), y:py+rand(-4,10), vx:rand(-140,-40), vy:rand(20,120),
+      r:rand(4,9), life:.5, age:0, col:"255,255,255", fade:.45 });
+  }
+}
+function spawnTrail(){
+  if (reducedMotion && Math.random() > .4) return;
+  const px = VW*PLAYER_X - 42, py = player.y + 26 + rand(-6,6);
+  const gold = ssOn ? "255,236,120" : "244,228,158";
+  parts.push({ x:px, y:py, vx:rand(-170,-120), vy:rand(-14,14),
+    r:rand(3,7), life:rand(.4,.7), age:0, col:gold, fade:.5 });
+}
+function spawnAura(){
+  if (!ssOn) return;
+  const px = VW*PLAYER_X + rand(-24,24), py = player.y + rand(-30,20);
+  parts.push({ x:px, y:py, vx:rand(-40,40), vy:rand(-220,-120),
+    r:rand(4,10), life:.4, age:0, col:"255,220,64", fade:.4 });
+}
+function spawnSplash(){
+  const px = VW*PLAYER_X;
+  const n = reducedMotion ? 8 : 22;
+  for (let i=0;i<n;i++){
+    parts.push({ x:px+rand(-24,24), y:VH-WATER_H+rand(-4,8), vx:rand(-160,160), vy:rand(-420,-120),
+      r:rand(3,8), life:rand(.5,.9), age:0, col:"188,240,222", fade:.7, grav:900 });
+  }
+}
+function spawnBurst(x, y){
+  const n = reducedMotion ? 6 : 16;
+  for (let i=0;i<n;i++){
+    const a = rand(0, Math.PI*2), s = rand(80, 380);
+    parts.push({ x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s,
+      r:rand(3,7), life:rand(.3,.6), age:0, col:"255,224,138", fade:.5 });
+  }
+}
+function spawnRing(x, y, col, vr, lw){
+  rings.push({ x, y, r:8, vr, lw, age:0, life:.5, col });
+}
+
+/* ---------- scoring, transformation, smashing ---------- */
+function addScore(){
+  score++;
+  scoreEl.textContent = score;
+  scoreEl.classList.remove("pop");
+  void scoreEl.offsetWidth;
+  scoreEl.classList.add("pop");
+  popups.push({ x:VW*PLAYER_X+60, y:player.y-40, age:0, txt:"+1" });
+  speed = Math.min(300, 205 + score*3.2);
+  gap = Math.max(190, 244 - score*1.6);
+  if (score >= nextSS){
+    nextSS += SS_SCORE;
+    startBurst();
+  }
+}
+function startBurst(){
+  ssOn = true;
+  burstT = BURST_DUR;
+  ssFlash = 1;
+  sfx.power();
+  popups.push({ x:VW*0.5, y:VH*0.3, age:0, txt:"SUPER SAIYAN!", big:true });
+  spawnRing(VW*PLAYER_X, player.y, "255,255,255", 720, 6);
+  spawnRing(VW*PLAYER_X, player.y, "255,220,90", 460, 4);
+  if (!reducedMotion) shake = Math.max(shake, 18);
+}
+function smashTree(p){
+  const px = p.x;
+  for (const yy of [p.cy - gap/2 + 20, p.cy + gap/2 - 20]){
+    spawnRing(px, yy, "255,220,90", 430, 4);
+    const n = reducedMotion ? 6 : 15;
+    for (let i=0;i<n;i++){
+      const a = rand(0, Math.PI*2), s = rand(120, 460);
+      parts.push({ x:px+rand(-14,14), y:yy+rand(-24,24),
+        vx:Math.cos(a)*s, vy:Math.sin(a)*s - 60,
+        r:rand(3,8), life:rand(.4,.8), age:0, grav:700,
+        col: i%3 ? "70,120,205" : "195,125,60", fade:.8 });
+    }
+  }
+  noise(.22, .4);
+  tone(120, .25, "sawtooth", .2, 55);
+  if (!reducedMotion) shake = Math.max(shake, 10);
+  sfx.score();
+  addScore();
+}
+
+/* ---------- update ---------- */
+function update(dt){
+  t += dt;
+  bgScroll += (mode === "play" ? (burstT > 0 ? speed*1.9 : speed) : mode === "menu" ? 123 : 0) * dt;
+  waterOffs = (waterOffs + speed*0.6*dt) % 80;
+
+  if (mode === "menu"){
+    player.y = VH*0.45 + Math.sin(t*2.2)*16;
+    player.rot = Math.sin(t*2.2+1)*0.06;
+    if (Math.random() < .5) spawnTrail();
+    updateParts(dt);
+    return;
+  }
+
+  if (mode === "play"){
+    const sp = burstT > 0 ? speed*1.9 : speed;
+
+    if (burstT > 0){
+      // super saiyan burst: off the nimbus, rocketing through everything
+      burstT -= dt;
+      if (burstT <= 0){ ssOn = false; ssFlash = Math.max(ssFlash, .4); graceT = 0.9; }  // power down + brief mercy
+      const ty = VH*0.42 + Math.sin(t*6)*20;
+      player.y += (ty - player.y) * Math.min(1, dt*5);
+      player.vy = 0;
+      player.flapT = 9;
+      player.rot += (-0.1 - player.rot) * Math.min(1, dt*8);
+      spawnTrail(); spawnTrail(); spawnAura();
+      for (const p of pipes){
+        const d = p.x - VW*PLAYER_X;
+        if (!p.smashed && d < 70 && d > -60){
+          p.smashed = true;
+          smashTree(p);
+        }
+      }
+      pipes = pipes.filter(p => !p.smashed);
+    } else {
+      player.vy = Math.min(player.vy + GRAVITY*dt, MAX_FALL);
+      player.y += player.vy*dt;
+      player.flapT += dt;
+      // tilt: up briefly after flap, nose-dive as fall speeds up
+      const target = player.vy < 0 ? -0.28 : clamp(player.vy/MAX_FALL, 0, 1)*0.95;
+      player.rot += (target - player.rot) * Math.min(1, dt*9);
+      spawnTrail();
+    }
+    if (player.y < 40){ player.y = 40; player.vy = Math.max(player.vy, 0); }
+
+    // scroll obstacles
+    spawnX -= sp*dt;
+    if (spawnX <= VW + PIPE_W){
+      const margin = 90;
+      const cy = rand(margin + gap/2, VH - WATER_H - margin - gap/2);
+      pipes.push({ x: VW + PIPE_W + 60, cy, passed:false, seed: Math.random()*100 });
+      spawnX = VW + PIPE_W + 318;
+    }
+    for (const p of pipes){
+      p.x -= sp*dt;
+      if (!p.passed && p.x + PIPE_W/2 < VW*PLAYER_X){
+        p.passed = true;
+        sfx.score();
+        addScore();
+      }
+    }
+    while (pipes.length && pipes[0].x < -PIPE_W*2) pipes.shift();
+
+    graceT = Math.max(0, graceT - dt);
+    // collisions (invincible while bursting + short grace after power-down)
+    if (burstT <= 0 && graceT <= 0){
+      const px = VW*PLAYER_X, py = player.y;
+      if (py + HIT_R > VH - WATER_H + 10){ die(true); }
+      for (const p of pipes){
+        const inX = px + HIT_R > p.x - PIPE_W/2 + 6 && px - HIT_R < p.x + PIPE_W/2 - 6;
+        if (inX && (py - HIT_R < p.cy - gap/2 || py + HIT_R > p.cy + gap/2)){
+          spawnBurst(px, py);
+          die(false);
+          break;
+        }
+      }
+    }
+  }
+
+  if (mode === "dying"){
+    deadTimer += dt;
+    player.vy = Math.min(player.vy + GRAVITY*dt, MAX_FALL*1.2);
+    player.y += player.vy*dt;
+    player.rot = Math.min(player.rot + dt*7, Math.PI*0.6);
+    if (player.y > VH - WATER_H + 4 && player.y < VH - WATER_H + 40 && player.vy > 0){
+      spawnSplash(); noise(.3,.4);
+      player.vy = 140;
+    }
+    if (deadTimer > 1.1 || player.y > VH + 80) showGameOver();
+  }
+
+  shake = Math.max(0, shake - dt*34);
+  ssFlash = Math.max(0, ssFlash - dt*1.6);
+  updateParts(dt);
+  for (const r of rings){ r.age += dt; r.r += r.vr*dt; }
+  rings = rings.filter(r => r.age < r.life);
+  for (const p of popups) p.age += dt;
+  popups = popups.filter(p => p.age < (p.big? 1.6 : .8));
+}
+function updateParts(dt){
+  for (const p of parts){
+    p.age += dt;
+    p.x += p.vx*dt; p.y += p.vy*dt;
+    if (p.grav) p.vy += p.grav*dt;
+  }
+  parts = parts.filter(p => p.age < p.life);
+}
+
+function die(splash){
+  if (mode !== "play") return;
+  mode = "dying";
+  sfx.hit();
+  if (!reducedMotion) shake = 16;
+  flashEl.style.transition = "none";
+  flashEl.style.opacity = ".85";
+  requestAnimationFrame(()=>{ flashEl.style.transition = "opacity .45s"; flashEl.style.opacity = "0"; });
+  if (splash){ spawnSplash(); }
+}
+function showGameOver(){
+  mode = "over";
+  stopMusic();
+  scoreEl.style.display = "none";
+  const isNew = score > best;
+  if (isNew){ best = score; localStorage.setItem("fg_best", best); }
+  finalEl.textContent = score;
+  finalEl.classList.toggle("new", isNew);
+  bestEl.textContent = best;
+  let m = "";
+  if (score >= 40) m = "★ LEGENDARY WARRIOR ★";
+  else if (score >= 30) m = "★ GOLD — ELITE SAIYAN ★";
+  else if (score >= 20) m = "★ SILVER — Z FIGHTER ★";
+  else if (score >= 10) m = "★ BRONZE — TRAINEE ★";
+  else m = isNew ? "NEW PERSONAL BEST!" : "KEEP TRAINING!";
+  if (isNew && score >= 10) m += " · NEW BEST!";
+  medalEl.textContent = m;
+  overEl.classList.remove("hidden");
+  retryBtn.focus({preventScroll:true});
+}
+
+/* =========================================================
+   RENDERING
+========================================================= */
+function draw(){
+  ctx.setTransform(scaleF, 0, 0, scaleF, 0, 0);
+  if (shake > 0){
+    ctx.translate(rand(-shake,shake), rand(-shake,shake));
+  }
+  drawSky();
+  drawSuns();
+  drawClouds();
+  drawFarIslands();
+  drawWater();
+  drawNearIslands();
+  drawReflections();
+  for (const p of pipes) drawPillar(p);
+  drawWind();
+  drawParticles();
+  if (mode === "play" && burstT > 0) drawGokuFlying(VW*PLAYER_X, player.y);
+  else drawGoku(VW*PLAYER_X, player.y, player.rot);
+  drawRings();
+  drawPopups();
+  drawVignette();
+  if (ssFlash > 0){
+    ctx.fillStyle = `rgba(255,236,140,${ssFlash*0.55})`;
+    ctx.fillRect(-40,-40,VW+80,VH+80);
+  }
+}
+
+/* ---------- atmosphere & light fx ---------- */
+function drawWind(){
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.lineCap = "round";
+  const n = reducedMotion ? 5 : 11;
+  const rush = burstT > 0 ? 2.2 : speed/205;
+  for (let i=0;i<n;i++){
+    const span = VW + 260;
+    const fac = 1.6 + prand(i+201)*1.4;
+    const x = ((prand(i+210)*span - (bgScroll*fac) % span) % span + span) % span - 130;
+    const y = VH * (0.04 + prand(i+220)*0.78);
+    const L = (55 + prand(i+230)*110) * rush;
+    ctx.strokeStyle = `rgba(255,255,255,${0.05 + prand(i+240)*0.07})`;
+    ctx.lineWidth = 1.6 + prand(i+250)*1.8;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x - L*.5, y - 7, x - L, y + 3);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawRings(){
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const r of rings){
+    const a = Math.max(0, 1 - r.age/r.life);
+    ctx.strokeStyle = `rgba(${r.col},${a*.85})`;
+    ctx.lineWidth = r.lw * (1 + r.age*3);
+    ctx.beginPath();
+    ctx.ellipse(r.x, r.y, r.r, r.r*.72, 0, 0, 7);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+let vigGrad = null, vigKey = "";
+function drawVignette(){
+  const key = VW+"x"+VH;
+  if (vigKey !== key){
+    vigGrad = ctx.createRadialGradient(VW/2, VH*.44, VH*.34, VW/2, VH*.5, VH*.78);
+    vigGrad.addColorStop(0, "rgba(0,0,0,0)");
+    vigGrad.addColorStop(1, "rgba(7,28,20,.34)");
+    vigKey = key;
+  }
+  ctx.fillStyle = vigGrad;
+  ctx.fillRect(-40,-40,VW+80,VH+80);
+}
+function drawReflections(){
+  const wy = VH - WATER_H;
+  ctx.save();
+  ctx.fillStyle = "#08302a";
+  ctx.globalAlpha = .16;
+  for (const p of pipes){
+    ctx.beginPath();
+    ctx.ellipse(p.x, wy + 26, 36, 9, 0, 0, 7);
+    ctx.fill();
+  }
+  ctx.globalAlpha = ssOn ? .22 : .07;
+  ctx.fillStyle = ssOn ? "#ffd23f" : "#ffffff";
+  ctx.beginPath();
+  ctx.ellipse(VW*PLAYER_X, wy + 18, 48, 8, 0, 0, 7);
+  ctx.fill();
+  ctx.restore();
+}
+/* layered ki-flame aura, anime cel style: soft glow + sharp spiked flame layers */
+function drawAuraFlame(scale, intensity){
+  ctx.save();
+  // additive halo underneath
+  ctx.globalCompositeOperation = "lighter";
+  const g = ctx.createRadialGradient(0, -8, 6, 0, -8, 96*scale);
+  g.addColorStop(0, `rgba(255,235,140,${.5*intensity})`);
+  g.addColorStop(1, "rgba(255,200,60,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0, -8, 96*scale, 0, 7); ctx.fill();
+  ctx.globalCompositeOperation = "source-over";
+  // three solid flame silhouettes with sharp licking points
+  const layers = [
+    { rO: 76, rI: 44, col: `rgba(255,158,20,${.55*intensity})`,  spd: 9 },
+    { rO: 60, rI: 35, col: `rgba(255,209,52,${.72*intensity})`,  spd: 12 },
+    { rO: 44, rI: 27, col: `rgba(255,246,172,${.85*intensity})`, spd: 16 }
+  ];
+  for (const L of layers){
+    ctx.beginPath();
+    const points = 18;
+    for (let i=0;i<=points;i++){
+      const a = i/points * Math.PI*2 - Math.PI/2;
+      const spike = i % 2 === 0;
+      const up   = 1 + .55*Math.max(0, -Math.sin(a));   // flames lick upward
+      const back = 1 + .3*Math.max(0, -Math.cos(a));    // and stream behind
+      const jag = Math.sin(i*2.7 + t*L.spd)*7 + Math.sin(t*L.spd*1.6 + i*1.3)*4;
+      const r = ((spike ? L.rO + jag : L.rI + jag*.35) * up * back) * scale;
+      const X = Math.cos(a)*r*.8, Y = Math.sin(a)*r - 8;
+      i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = L.col;
+    ctx.fill();
+  }
+  // crackling bio-electric arcs
+  if (!reducedMotion && Math.random() < .35){
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = "rgba(215,240,255,.9)";
+    ctx.lineWidth = 1.7;
+    for (let b=0;b<2;b++){
+      let ax = rand(-36,36)*scale, ay = rand(-52,8)*scale;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      for (let s2=0;s2<4;s2++){ ax += rand(-15,15); ay += rand(-13,13); ctx.lineTo(ax, ay); }
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+/* ---------- sky ---------- */
+let skyGrad = null, skyKey = "";
+function drawSky(){
+  const key = VW+"x"+VH;
+  if (skyKey !== key){
+    skyGrad = ctx.createLinearGradient(0,0,0,VH);
+    skyGrad.addColorStop(0, "#1e8a54");
+    skyGrad.addColorStop(.42, "#5cbf4f");
+    skyGrad.addColorStop(.68, "#b9e878");
+    skyGrad.addColorStop(.8, "#eaf7b0");
+    skyKey = key;
+  }
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(-40,-40,VW+80,VH+80);
+}
+function drawSuns(){
+  const suns = [
+    {x:VW*0.78, y:VH*0.14, r:38, drift:6},
+    {x:VW*0.16, y:VH*0.24, r:22, drift:9}
+  ];
+  for (const s of suns){
+    const sx = s.x + Math.sin(t*0.1)*s.drift;
+    const g = ctx.createRadialGradient(sx, s.y, 2, sx, s.y, s.r*2.6);
+    g.addColorStop(0, "rgba(255,255,230,.95)");
+    g.addColorStop(.35, "rgba(255,250,190,.55)");
+    g.addColorStop(1, "rgba(255,250,190,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(sx, s.y, s.r*2.6, 0, 7); ctx.fill();
+    ctx.fillStyle = "#fffbe4";
+    ctx.beginPath(); ctx.arc(sx, s.y, s.r, 0, 7); ctx.fill();
+  }
+  // slow-turning god rays from the primary sun
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  const gx = VW*0.78, gy = VH*0.14;
+  ctx.fillStyle = "rgba(255,250,200,.05)";
+  for (let k=0;k<4;k++){
+    const a = t*0.05 + k*Math.PI/2 + 0.4;
+    ctx.beginPath();
+    ctx.moveTo(gx, gy);
+    ctx.arc(gx, gy, VH*0.85, a, a+0.16);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+function drawClouds(){
+  ctx.fillStyle = "rgba(255,255,255,.5)";
+  for (let i=0;i<5;i++){
+    const w = 90 + prand(i)*110;
+    const x = ((prand(i+10)*(VW+300) - bgOff(12+i*2)) % (VW+300) + VW+300) % (VW+300) - 150;
+    const y = VH*(0.08 + prand(i+20)*0.3);
+    cloudShape(x, y, w, .5);
+  }
+}
+function bgOff(base){ return bgScroll * base/205; }
+function cloudShape(x, y, w, alpha){
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.ellipse(x, y, w*.5, w*.16, 0, 0, 7);
+  ctx.ellipse(x-w*.22, y-w*.07, w*.22, w*.13, 0, 0, 7);
+  ctx.ellipse(x+w*.18, y-w*.09, w*.26, w*.15, 0, 0, 7);
+  ctx.fill();
+  ctx.restore();
+}
+
+/* ---------- landscape ---------- */
+const HORIZON = VHfrac(0.8);
+function VHfrac(f){ return VH*f; }
+function drawFarIslands(){
+  // distant silhouettes hugging the waterline
+  ctx.fillStyle = "rgba(20,86,66,.4)";
+  for (let i=0;i<4;i++){
+    const w = 110 + prand(i+30)*130;
+    const span = VW + 400;
+    const x = ((prand(i+40)*span - bgOff(22)) % span + span) % span - 200;
+    const y = VH - WATER_H + 4;
+    ctx.beginPath();
+    ctx.ellipse(x, y, w*.5, 12 + prand(i+50)*12, 0, Math.PI, 0);
+    ctx.fill();
+  }
+}
+function drawWater(){
+  const y = VH - WATER_H;
+  const g = ctx.createLinearGradient(0, y, 0, VH);
+  g.addColorStop(0, "#18907c");
+  g.addColorStop(.25, "#0f6e60");
+  g.addColorStop(1, "#0a4a44");
+  ctx.fillStyle = g;
+  ctx.fillRect(-40, y, VW+80, WATER_H+40);
+  // shoreline highlight
+  ctx.fillStyle = "rgba(234,247,176,.8)";
+  ctx.fillRect(-40, y-3, VW+80, 4);
+  // moving shimmer dashes
+  ctx.strokeStyle = "rgba(197,247,214,.5)";
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  for (let row=0; row<3; row++){
+    const ry = y + 22 + row*26;
+    const off = (waterOffs * (1 + row*.5)) % 80;
+    ctx.globalAlpha = .5 - row*.13;
+    ctx.beginPath();
+    for (let x = -off; x < VW; x += 80){
+      ctx.moveTo(x + row*17, ry);
+      ctx.lineTo(x + row*17 + 26, ry);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+function drawNearIslands(){
+  // green islets floating on the water with ajisa trees + a dome home
+  const span = VW + 520;
+  for (let i=0;i<3;i++){
+    const x = ((prand(i+60)*span - bgOff(46)) % span + span) % span - 260;
+    const y = VH - WATER_H + 14 + prand(i+65)*10;
+    const w = 150 + prand(i+70)*130;
+    islet(x, y, w, i);
+  }
+}
+function islet(x, y, w, seed){
+  ctx.save();
+  // land
+  ctx.fillStyle = "#2e9e63";
+  ctx.beginPath();
+  ctx.ellipse(x, y, w*.5, w*.14, 0, Math.PI, 0);
+  ctx.fill();
+  ctx.fillStyle = "#57c46f";
+  ctx.beginPath();
+  ctx.ellipse(x, y-3, w*.44, w*.1, 0, Math.PI, 0);
+  ctx.fill();
+  // ajisa trees
+  const trees = 2 + Math.floor(prand(seed+80)*2);
+  for (let i=0;i<trees;i++){
+    const tx = x - w*.3 + (i+0.5)*(w*.6/trees);
+    const th = 26 + prand(seed*3+i)*22;
+    ctx.strokeStyle = "#e9f5cf";
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(tx, y-2); ctx.lineTo(tx, y-th); ctx.stroke();
+    ctx.fillStyle = "#1d6f52";
+    ctx.beginPath(); ctx.arc(tx, y-th-8, 13 + prand(seed+i)*6, 0, 7); ctx.fill();
+    ctx.fillStyle = "#2f8f68";
+    ctx.beginPath(); ctx.arc(tx-5, y-th-12, 7, 0, 7); ctx.fill();
+  }
+  // namekian dome house on the widest islet
+  if (prand(seed+90) > .45){
+    const hx = x + w*.18, hy = y - 1;
+    ctx.fillStyle = "#f3efdf";
+    ctx.beginPath(); ctx.arc(hx, hy, 15, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = "#d8d2ba";
+    ctx.fillRect(hx-2.5, hy-25, 5, 11);
+    ctx.beginPath(); ctx.arc(hx, hy-25, 4, 0, 7); ctx.fill();
+    ctx.fillStyle = "#4a7d92";
+    ctx.beginPath(); ctx.arc(hx, hy-6, 4.5, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ---------- ajisa trees (obstacles) ---------- */
+function drawPillar(p){
+  const topEdge = p.cy - gap/2;   // where the top tree's canopy ends
+  const botEdge = p.cy + gap/2;   // where the bottom tree's canopy starts
+  drawTree(p.x, botEdge, (VH - WATER_H + 24) - botEdge, false, p.seed);
+  drawTree(p.x, topEdge, topEdge + 24, true, p.seed + 7);
+}
+// Moebius-style Namek tree: slender orange trunk, big blue scalloped canopy at the gap end
+function drawTree(cx, edgeY, len, isTop, seed){
+  ctx.save();
+  ctx.translate(cx, edgeY);
+  if (isTop) ctx.scale(1, -1);
+  const trunkTop = 44;
+  // trunk (tapers slightly, gentle curve)
+  const tg = ctx.createLinearGradient(-22, 0, 22, 0);
+  tg.addColorStop(0, "#9c5220");
+  tg.addColorStop(.35, "#cf7a35");
+  tg.addColorStop(.7, "#e0954c");
+  tg.addColorStop(1, "#a35a24");
+  ctx.fillStyle = tg;
+  ctx.beginPath();
+  ctx.moveTo(-17, trunkTop);
+  ctx.quadraticCurveTo(-22, trunkTop + len*.5, -19, trunkTop + len);
+  ctx.lineTo(20, trunkTop + len);
+  ctx.quadraticCurveTo(23, trunkTop + len*.5, 18, trunkTop);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "rgba(60,26,4,.5)";
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  // bark streaks
+  ctx.strokeStyle = "rgba(94,44,10,.35)";
+  ctx.lineWidth = 2;
+  for (let i=0;i<3;i++){
+    const sx = -9 + i*9 + Math.sin(seed+i)*3;
+    ctx.beginPath();
+    ctx.moveTo(sx, trunkTop + 12);
+    ctx.lineTo(sx + Math.sin(seed*2+i)*5, trunkTop + len - 10);
+    ctx.stroke();
+  }
+  // branch fork disappearing into the canopy
+  ctx.strokeStyle = "#a35a24";
+  ctx.lineWidth = 7;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-7, trunkTop + 8); ctx.lineTo(-16, 22);
+  ctx.moveTo(7, trunkTop + 8);  ctx.lineTo(15, 24);
+  ctx.stroke();
+  // canopy: overlapping blue blobs make the scalloped silhouette
+  const blobs = [[0,22,34],[-28,26,18],[28,26,17],[-16,6,18],[16,4,17],[0,-2,16],[-36,14,13],[36,12,13]];
+  ctx.fillStyle = "#2b5fa8";
+  ctx.beginPath();
+  for (const [bx,by,br] of blobs){
+    const jx = bx + prand(seed+bx)*5 - 2.5, jy = by + prand(seed+by+50)*5 - 2.5;
+    ctx.moveTo(jx+br, jy);
+    ctx.arc(jx, jy, br, 0, 7);
+  }
+  ctx.fill();
+  // darker foliage patches
+  ctx.fillStyle = "rgba(19,52,105,.6)";
+  ctx.beginPath();
+  ctx.moveTo(-3, 26); ctx.arc(-14, 26, 12, 0, 7);
+  ctx.moveTo(24, 16); ctx.arc(13, 16, 11, 0, 7);
+  ctx.moveTo(8, 2);   ctx.arc(-1, 2, 9, 0, 7);
+  ctx.fill();
+  // light catching the top scallops
+  ctx.fillStyle = "rgba(130,180,235,.4)";
+  ctx.beginPath();
+  ctx.moveTo(-14, 4); ctx.arc(-21, 4, 7, 0, 7);
+  ctx.moveTo(15, -4); ctx.arc(8, -4, 7, 0, 7);
+  ctx.fill();
+  ctx.restore();
+}
+
+/* ---------- particles & popups ---------- */
+function drawParticles(){
+  for (const p of parts){
+    const a = Math.max(0, 1 - p.age/p.life) * (p.fade || .5);
+    ctx.fillStyle = `rgba(${p.col},${a})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * (1 - p.age/p.life*.5), 0, 7);
+    ctx.fill();
+  }
+}
+function drawPopups(){
+  for (const p of popups){
+    const lifespan = p.big ? 1.6 : .8;
+    const k = p.age/lifespan;
+    const a = k < .7 ? 1 : (1-k)/.3;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.font = `${p.big ? 44 : 30}px Bangers, Impact, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.lineWidth = p.big ? 7 : 5;
+    ctx.strokeStyle = p.big ? "#8a4500" : "#17301f";
+    ctx.fillStyle = p.big ? "#ffe066" : "#ffffff";
+    const y = p.y - k * (p.big? 26 : 46);
+    const sc = p.big ? (1 + Math.sin(Math.min(k*3,1)*Math.PI)*.18) : 1;
+    ctx.translate(p.x, y); ctx.scale(sc, sc);
+    ctx.strokeText(p.txt, 0, 0);
+    ctx.fillText(p.txt, 0, 0);
+    ctx.restore();
+  }
+}
+
+/* =========================================================
+   GOKU + NIMBUS (vector sprite, ~110×110 local units)
+========================================================= */
+function drawGoku(x, y, rot){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  const wob = Math.sin(t*9);
+  const hairC  = ssOn ? "#ffd21f" : "#1b1b23";
+  const hairC2 = ssOn ? "#ffb700" : "#33333f";
+  const puff = (px, py, pr) => { ctx.moveTo(px+pr, py); ctx.arc(px, py, pr, 0, 7); };
+
+  /* -- contrail: smoke tail streaming off the nimbus like a jet -- */
+  const ny = 30 + wob*1.6;
+  {
+    const tailLen = 140 + (speed-205)*0.5;
+    const yc = s => ny + 3 + Math.sin(s*5.5 - t*9) * 8 * s;
+    const half = s => (1-s)*10 + 1.5;
+    const tg = ctx.createLinearGradient(-44, 0, -44 - tailLen, 0);
+    tg.addColorStop(0, "rgba(255,242,205,.6)");
+    tg.addColorStop(.45, "rgba(255,252,240,.28)");
+    tg.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = tg;
+    ctx.beginPath();
+    for (let i=0;i<=14;i++){
+      const s = i/14, x = -44 - s*tailLen;
+      i ? ctx.lineTo(x, yc(s)-half(s)) : ctx.moveTo(x, yc(s)-half(s));
+    }
+    for (let i=14;i>=0;i--){
+      const s = i/14, x = -44 - s*tailLen;
+      ctx.lineTo(x, yc(s)+half(s));
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  /* -- flying nimbus: golden lobed cloud, glowing -- */
+  ctx.save();
+  ctx.shadowColor = "rgba(255,200,60,.8)";
+  ctx.shadowBlur = 16;
+  ctx.fillStyle = "#ffd23f";
+  ctx.beginPath();
+  ctx.ellipse(0, ny+4, 52, 13, 0, 0, 7);
+  // top arc of puffs
+  puff(-44, ny+2+wob, 11);
+  puff(-30, ny-5+wob, 14);
+  puff(-13, ny-10-wob, 16);
+  puff(6, ny-10+wob, 16);
+  puff(25, ny-6-wob, 14);
+  puff(41, ny+1+wob, 11);
+  // bottom arc of puffs
+  puff(34, ny+9, 10);
+  puff(16, ny+13, 12);
+  puff(-4, ny+14, 13);
+  puff(-24, ny+12, 12);
+  puff(-41, ny+8, 10);
+  ctx.fill();
+  ctx.restore();
+  // orange under-shading, lobe by lobe
+  ctx.fillStyle = "#f2a02a";
+  ctx.beginPath();
+  ctx.ellipse(34, ny+12, 8, 4.5, 0, 0, 7);
+  ctx.moveTo(25.5, ny+16);
+  ctx.ellipse(16, ny+16, 9.5, 5, 0, 0, 7);
+  ctx.moveTo(6, ny+17);
+  ctx.ellipse(-4, ny+17, 10, 5, 0, 0, 7);
+  ctx.moveTo(-15, ny+15);
+  ctx.ellipse(-24, ny+15, 9, 4.5, 0, 0, 7);
+  ctx.moveTo(-34, ny+10.5);
+  ctx.ellipse(-41, ny+10.5, 7, 4, 0, 0, 7);
+  ctx.fill();
+  // sunlit highlights on the top puffs
+  ctx.fillStyle = "#fff3b0";
+  ctx.beginPath();
+  puff(-14, ny-11, 8);
+  puff(6, ny-11, 7.5);
+  puff(-31, ny-7, 7);
+  puff(24, ny-7, 6.5);
+  ctx.fill();
+
+  /* -- belt tails streaming in the wind (behind body) -- */
+  ctx.strokeStyle = "#27418c";
+  ctx.lineCap = "round";
+  ctx.lineWidth = 4.5;
+  ctx.beginPath();
+  ctx.moveTo(-16, 4);
+  ctx.quadraticCurveTo(-27, 7 + Math.sin(t*10)*3, -36, 13 + Math.sin(t*10+1)*5);
+  ctx.moveTo(-16, 6);
+  ctx.quadraticCurveTo(-25, 12 + Math.sin(t*11+2)*3, -33, 20 + Math.sin(t*11+3)*4);
+  ctx.stroke();
+
+  /* -- goku: adult, side profile, cross-legged like the anime pose -- */
+  const skin = "#f8cba6", skinD = "#d99f70";
+  const gi = "#f28422", giD = "#cf640e";
+  const navy = "#27418c", navyD = "#1c2f66";
+  const outline = "rgba(60,26,4,.85)";
+  ctx.lineJoin = "round";
+
+  // ---- crossed legs (orange pant mass sitting on the cloud) ----
+  ctx.fillStyle = gi;
+  ctx.beginPath();
+  ctx.moveTo(-23, 8);
+  ctx.quadraticCurveTo(-26, 21, -8, 25);
+  ctx.quadraticCurveTo(8, 28, 19, 23);
+  ctx.quadraticCurveTo(28, 18, 23, 11);
+  ctx.quadraticCurveTo(16, 4, 4, 6);
+  ctx.quadraticCurveTo(-12, 3, -23, 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = outline; ctx.lineWidth = 1.6; ctx.stroke();
+  // shin fold across the lap
+  ctx.strokeStyle = giD; ctx.lineWidth = 2.2; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(-15, 13); ctx.quadraticCurveTo(2, 19, 16, 14); ctx.stroke();
+  // boot toe peeking out front
+  ctx.fillStyle = navyD;
+  ctx.beginPath(); ctx.ellipse(20, 19, 6.5, 4, .35, 0, 7); ctx.fill();
+  ctx.strokeStyle = outline; ctx.lineWidth = 1.4; ctx.stroke();
+  ctx.fillStyle = "#ffd21f";
+  ctx.beginPath(); ctx.ellipse(16.5, 16.5, 3, 1.6, .35, 0, 7); ctx.fill();
+
+  // ---- torso (broad adult back, leaning slightly forward) ----
+  ctx.fillStyle = gi;
+  ctx.beginPath();
+  ctx.moveTo(4, -30);                       // neck front
+  ctx.quadraticCurveTo(13, -25, 13, -13);   // chest
+  ctx.quadraticCurveTo(13, -5, 11, 2);      // waist front
+  ctx.lineTo(-18, 5);                       // waist back
+  ctx.quadraticCurveTo(-21, -9, -17, -22);  // lower back
+  ctx.quadraticCurveTo(-14, -32, -3, -33);  // shoulders
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = outline; ctx.lineWidth = 1.6; ctx.stroke();
+
+  // kanji patch on the back of the gi
+  ctx.fillStyle = "#fdf6e3";
+  ctx.beginPath(); ctx.arc(-8, -17, 6.8, 0, 7); ctx.fill();
+  ctx.strokeStyle = navyD; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.arc(-8, -17, 6.8, 0, 7); ctx.stroke();
+  ctx.lineWidth = 1.6; ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-11, -19); ctx.lineTo(-5, -19);
+  ctx.moveTo(-8, -21);  ctx.lineTo(-8, -13);
+  ctx.moveTo(-11, -14.5); ctx.quadraticCurveTo(-8, -12.5, -5, -14.5);
+  ctx.stroke();
+
+  // navy obi belt
+  ctx.fillStyle = navy;
+  ctx.beginPath();
+  ctx.moveTo(-19, 2); ctx.quadraticCurveTo(0, 7, 12, 2);
+  ctx.lineTo(11, 8);  ctx.quadraticCurveTo(0, 12.5, -18, 8);
+  ctx.closePath(); ctx.fill();
+
+  // ---- cel shadows + warm rim light ----
+  ctx.fillStyle = "rgba(122,52,4,.2)";
+  ctx.beginPath();
+  ctx.moveTo(-18, 4);
+  ctx.quadraticCurveTo(-21, -9, -17, -22);
+  ctx.quadraticCurveTo(-12, -6, -13, 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-22, 12);
+  ctx.quadraticCurveTo(-8, 24, 12, 23);
+  ctx.quadraticCurveTo(-4, 27, -14, 22);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,238,196,.9)";
+  ctx.lineWidth = 1.6;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(4.5, -29);
+  ctx.quadraticCurveTo(12.5, -24.5, 12.5, -13.5);
+  ctx.moveTo(13, 6);
+  ctx.quadraticCurveTo(19, 9, 22.5, 13);
+  ctx.stroke();
+
+  // ---- arm (sleeve, forearm, fist) ----
+  const raised = player.flapT < 0.28 && (mode === "play" || mode === "menu");
+  // short gi sleeve with navy trim
+  ctx.fillStyle = gi;
+  ctx.beginPath(); ctx.ellipse(2, -21, 9, 12.5, .3, 0, 7); ctx.fill();
+  ctx.strokeStyle = outline; ctx.lineWidth = 1.4; ctx.stroke();
+  ctx.fillStyle = navy;
+  ctx.beginPath(); ctx.ellipse(5.5, -11.5, 7.6, 3.8, .45, 0, 7); ctx.fill();
+  if (raised){
+    // punching the sky after a flap
+    ctx.strokeStyle = skin; ctx.lineWidth = 7.5; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(6, -13); ctx.quadraticCurveTo(13, -22, 15, -33); ctx.stroke();
+    ctx.fillStyle = navy;
+    ctx.beginPath(); ctx.arc(14.6, -32, 5.6, 0, 7); ctx.fill();
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.arc(16, -41, 6.2, 0, 7); ctx.fill();
+    ctx.strokeStyle = outline; ctx.lineWidth = 1.3; ctx.stroke();
+  } else {
+    // forearm resting on the crossed legs
+    ctx.strokeStyle = skin; ctx.lineWidth = 7.5; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(6, -12); ctx.quadraticCurveTo(13, -5, 15.5, 1); ctx.stroke();
+    ctx.fillStyle = navy;
+    ctx.beginPath(); ctx.arc(15.5, 1.5, 5.4, 0, 7); ctx.fill();
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.arc(17.5, 7, 5.8, 0, 7); ctx.fill();
+    ctx.strokeStyle = outline; ctx.lineWidth = 1.3; ctx.stroke();
+  }
+
+  /* ---- head (shared with the flying pose) ---- */
+  ctx.save();
+  ctx.translate(5, -42 + wob*0.7);
+  drawHead(-(2.4 + (speed-205)/42));   // wind sweeps hair back; stronger as flight speeds up
+  ctx.restore();
+
+  /* -- front puffs of the nimbus, so goku nestles into the cloud -- */
+  ctx.fillStyle = "#ffcb3d";
+  ctx.beginPath();
+  puff(-26, ny+9-wob, 13);
+  puff(-4, ny+12+wob, 15);
+  puff(19, ny+9-wob, 12);
+  puff(38, ny+11+wob, 9);
+  ctx.fill();
+  ctx.fillStyle = "#ffe27a";
+  ctx.beginPath();
+  puff(-5, ny+7+wob, 7);
+  puff(-26, ny+5-wob, 6);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/* Goku's head, side profile facing right. Call with ctx translated so the
+   skull center sits at the origin. fl = hair flutter (wind) offset. */
+function drawHead(fl){
+  const skin = "#f8cba6", skinD = "#d99f70";
+  const outline = "rgba(60,26,4,.85)";
+  const hairC  = ssOn ? "#ffe23f" : "#1b1b23";
+  const hairC2 = ssOn ? "#ffb700" : "#33333f";
+  ctx.lineJoin = "round";
+
+  // neck
+  ctx.fillStyle = skin;
+  ctx.fillRect(-4, 8, 9, 8);
+
+  // face + skull skin
+  ctx.fillStyle = skin;
+  ctx.beginPath();
+  ctx.moveTo(9, -11);                          // forehead under bangs
+  ctx.quadraticCurveTo(13, -8, 13, -4);        // forehead
+  ctx.lineTo(12.4, -1.6);                      // brow notch
+  ctx.quadraticCurveTo(13.2, .2, 16.6, 2.6);   // nose bridge → tip
+  ctx.lineTo(13.4, 4.6);                       // under nose
+  ctx.quadraticCurveTo(14.6, 6.2, 13.4, 7.6);  // lips
+  ctx.quadraticCurveTo(14.8, 9.2, 13, 11.4);   // chin
+  ctx.quadraticCurveTo(9, 14.4, 3.5, 13.6);    // jaw bottom
+  ctx.quadraticCurveTo(-3.5, 13, -6.5, 9);     // jaw back
+  ctx.quadraticCurveTo(-13.5, 6, -14, -2);     // back of head
+  ctx.quadraticCurveTo(-13, -11, -4, -13.4);   // skull top
+  ctx.quadraticCurveTo(3, -14, 9, -11);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = outline; ctx.lineWidth = 1.4; ctx.stroke();
+
+  // ear
+  ctx.fillStyle = skin;
+  ctx.beginPath(); ctx.ellipse(-2, 1.5, 3.2, 5, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = outline; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.strokeStyle = skinD; ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.arc(-2.4, 1.5, 2, -1.2, 1.4); ctx.stroke();
+
+  // ---- the iconic Toriyama starburst hair (right-facing) ----
+  // wind: periodic gusts + per-tip ripple; the long back spikes ride the wind most.
+  const gust = 1 + Math.max(0, Math.sin(t*2.7)) * 0.8;
+  const W = fl * gust;                                        // wind pull (negative = swept back)
+  const amp = 1 + Math.abs(fl) * 0.14;                        // faster flight = livelier hair
+  const rip = (ph, a) => Math.sin(t*9.5 + ph) * a * amp;
+  // broad spike tips, fanning around the skull. [x, y]
+  const S1 = [17 + rip(0.2, .7),          -26 + rip(0.2, .8)];   // front, sweeps up over the brow
+  const S2 = [10 + rip(0.7, .9),          -42 + rip(0.7,1.0)];   // front-top
+  const S3 = [ 1 + W*.15 + rip(1.2,1.1),  -50 + rip(1.2,1.1)];   // tall central spike (front)
+  const S4 = [-11 + W*.4 + rip(1.8,1.5),  -46 + rip(1.8,1.3)];   // tall central spike (back)
+  const S5 = [-26 + W*.75 + rip(2.4,2.6), -35 + rip(2.4,2.3)];   // upper-back spike
+  const S6 = [-37 + W*1.0 + rip(3.1,3.3), -18 + rip(3.1,2.7)];   // mid-back spike (horizontal)
+  const S7 = [-34 + W*.9 + rip(3.8,3.1),   -1 + rip(3.8,2.5)];   // lower-back spike
+  const S8 = [-21 + W*.6 + rip(4.4,2.1),   13 + rip(4.4,1.9)];   // nape spike
+
+  if (ssOn){ ctx.save(); ctx.shadowColor = "rgba(255,220,60,.9)"; ctx.shadowBlur = 12; }
+  ctx.fillStyle = hairC;
+  ctx.beginPath();
+  ctx.moveTo(12, -7);                                  // front hairline above the brow
+  ctx.quadraticCurveTo(16, -16, S1[0], S1[1]);         // front spike, curving up-forward
+  ctx.quadraticCurveTo(11, -19, 8.5, -21);             // notch
+  ctx.quadraticCurveTo(11, -33, S2[0], S2[1]);         // front-top spike
+  ctx.quadraticCurveTo(4, -25, 1.5, -25);              // notch
+  ctx.quadraticCurveTo(4, -40, S3[0], S3[1]);          // tall central spike (front) — tallest
+  ctx.quadraticCurveTo(-4, -37, -6, -26);              // deep notch between the two tall spikes
+  ctx.quadraticCurveTo(-9, -40, S4[0], S4[1]);         // tall central spike (back)
+  ctx.quadraticCurveTo(-13, -35, -14.5, -23);          // notch
+  ctx.quadraticCurveTo(-19, -34, S5[0], S5[1]);        // upper-back spike
+  ctx.quadraticCurveTo(-18, -22, -18.5, -13);          // notch
+  ctx.quadraticCurveTo(-27, -21, S6[0], S6[1]);        // mid-back spike
+  ctx.quadraticCurveTo(-19, -10, -18, -4);             // notch
+  ctx.quadraticCurveTo(-26, -8, S7[0], S7[1]);         // lower-back spike
+  ctx.quadraticCurveTo(-16, 1, -15, 4);                // notch
+  ctx.quadraticCurveTo(-22, 6, S8[0], S8[1]);          // nape spike
+  ctx.quadraticCurveTo(-12, 8, -9, 6.5);               // down to the nape base
+  ctx.quadraticCurveTo(-8, .5, -6.5, -2.5);            // hairline behind/over the ear
+  ctx.lineTo(2, -5);
+  ctx.lineTo(1, 7);                                    // sideburn in front of the ear
+  ctx.lineTo(5, -3.5);
+  ctx.quadraticCurveTo(8, -7, 12, -7);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = ssOn ? "rgba(160,100,0,.8)" : "rgba(0,0,0,.8)";
+  ctx.lineWidth = 1.5; ctx.lineJoin = "round";
+  ctx.stroke();                                        // outline the whole starburst
+  // a single natural bang lock coming to a point on the forehead
+  ctx.beginPath();
+  ctx.moveTo(7.5, -11);
+  ctx.quadraticCurveTo(13, -9.5, 12.5, -6);           // front edge curving down
+  ctx.quadraticCurveTo(12, -3.5, 10.3, -3.5);         // point on the forehead (widow's peak)
+  ctx.quadraticCurveTo(9.5, -7, 7.5, -11);            // back edge up into the hair mass
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  if (ssOn) ctx.restore();
+
+  // sheen: slim tapered highlight streaks hugging each spike (manga shine)
+  const sheen = ssOn ? "rgba(255,246,196,.85)" : "rgba(196,201,216,.8)";
+  const taperStreak = (bx,by, cx,cy, tx,ty, wBase) => {
+    // a filled sliver: wide at the base, tapering to a point near the tip
+    const nx = -(ty-by), ny = (tx-bx), nl = Math.hypot(nx,ny) || 1;
+    const ox = nx/nl*wBase*0.5, oy = ny/nl*wBase*0.5;
+    ctx.beginPath();
+    ctx.moveTo(bx-ox, by-oy);
+    ctx.quadraticCurveTo(cx-ox*0.4, cy-oy*0.4, tx, ty);
+    ctx.quadraticCurveTo(cx+ox*0.4, cy+oy*0.4, bx+ox, by+oy);
+    ctx.closePath();
+    ctx.fill();
+  };
+  ctx.fillStyle = sheen;
+  taperStreak(3.5, -25, 5, -38, S3[0]-1, S3[1]+6, 3.4);     // tall front spike
+  taperStreak(-7, -25, -9, -37, S4[0]+1, S4[1]+6, 3.0);     // tall back spike
+  taperStreak(8.5, -21, 9.5, -32, S2[0]-.5, S2[1]+6, 2.6);  // front-top spike
+  taperStreak(-15, -22, -21, -30, S5[0]+2, S5[1]+5, 2.6);   // upper-back spike
+  taperStreak(-16, -13, -26, -16, S6[0]+4, S6[1]+2, 2.4);   // mid-back spike
+  // a few fine stray hairs arcing just past the spikes
+  ctx.strokeStyle = ssOn ? "rgba(200,150,0,.6)" : "rgba(20,20,28,.6)";
+  ctx.lineWidth = 0.7; ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(S3[0], S3[1]+4); ctx.quadraticCurveTo(S3[0]+5, S3[1]-5, S3[0]+7, S3[1]-4);
+  ctx.moveTo(S4[0], S4[1]+4); ctx.quadraticCurveTo(S4[0]-4, S4[1]-6, S4[0]-6, S4[1]-4);
+  ctx.stroke();
+
+  // brow + eye (sharp anime profile)
+  ctx.strokeStyle = ssOn ? "#8a5a00" : "#14141c";
+  ctx.lineWidth = 2.6; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(7, -5.2); ctx.lineTo(12.6, -3.6); ctx.stroke();
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.ellipse(10.6, -.4, 2.6, 3, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = ssOn ? "#0d5c46" : "#14141c";
+  ctx.beginPath(); ctx.ellipse(11.2, -.3, 1.7, 2.6, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.arc(10.7, -1.3, .8, 0, 7); ctx.fill();
+
+  // nostril + mouth
+  ctx.fillStyle = skinD;
+  ctx.beginPath(); ctx.arc(14.2, 3.6, .9, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#7c3f1d"; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.moveTo(10.4, 7.4); ctx.quadraticCurveTo(12.4, 7.8, 13.6, 6.8); ctx.stroke();
+
+  // warm rim light along the face profile
+  ctx.strokeStyle = "rgba(255,238,196,.85)";
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.moveTo(12.8, -7.5);
+  ctx.quadraticCurveTo(13, -4.5, 12.5, -2);
+  ctx.moveTo(14, 8.6);
+  ctx.quadraticCurveTo(11.5, 12.6, 6, 13.2);
+  ctx.stroke();
+}
+
+/* Super Saiyan burst: horizontal flying punch, FighterZ-style */
+function drawGokuFlying(x, y){
+  ctx.save();
+  ctx.translate(x, y);
+  const skin = "#f8cba6", gi = "#f28422";
+  const navy = "#27418c", navyD = "#1c2f66";
+  const outline = "rgba(60,26,4,.85)";
+  ctx.lineJoin = "round";
+
+  drawAuraFlame(1.55, 1);
+
+  // comet tail streaming behind
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  const tg = ctx.createLinearGradient(-160, 0, -8, 0);
+  tg.addColorStop(0, "rgba(255,150,30,0)");
+  tg.addColorStop(.7, "rgba(255,190,60,.4)");
+  tg.addColorStop(1, "rgba(255,240,150,.7)");
+  ctx.fillStyle = tg;
+  ctx.beginPath();
+  ctx.moveTo(-8, -18);
+  ctx.quadraticCurveTo(-90, -26 + Math.sin(t*21)*10, -160, -6 + Math.sin(t*17)*8);
+  ctx.lineTo(-150, 10 + Math.sin(t*19)*8);
+  ctx.quadraticCurveTo(-80, 22, -8, 16);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // rear arm, bent back (behind torso)
+  ctx.strokeStyle = skin; ctx.lineWidth = 6.5; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(0, -4); ctx.quadraticCurveTo(-6, 2, -11, 9); ctx.stroke();
+  ctx.fillStyle = navy;
+  ctx.beginPath(); ctx.arc(-10, 8, 4.6, 0, 7); ctx.fill();
+  ctx.fillStyle = skin;
+  ctx.beginPath(); ctx.arc(-14, 12, 5, 0, 7); ctx.fill();
+  ctx.strokeStyle = outline; ctx.lineWidth = 1.2; ctx.stroke();
+
+  // legs trailing back, slightly split
+  ctx.strokeStyle = gi; ctx.lineWidth = 10; ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-13, 1); ctx.quadraticCurveTo(-24, -3, -33, -6 + Math.sin(t*15)*2);
+  ctx.moveTo(-13, 6); ctx.quadraticCurveTo(-22, 10, -29, 13 + Math.sin(t*16+1)*2);
+  ctx.stroke();
+  ctx.fillStyle = navyD;
+  ctx.beginPath(); ctx.ellipse(-37, -7, 6, 4.2, -.2, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-33, 14, 6, 4.2, .25, 0, 7); ctx.fill();
+  ctx.strokeStyle = outline; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.ellipse(-37, -7, 6, 4.2, -.2, 0, 7); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(-33, 14, 6, 4.2, .25, 0, 7); ctx.stroke();
+
+  // belt tails whipping
+  ctx.strokeStyle = navy; ctx.lineWidth = 4; ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-12, 3);
+  ctx.quadraticCurveTo(-24, 8 + Math.sin(t*18)*5, -35, 4 + Math.sin(t*20)*8);
+  ctx.stroke();
+
+  // torso, horizontal
+  ctx.fillStyle = gi;
+  ctx.beginPath();
+  ctx.moveTo(10, -14);
+  ctx.quadraticCurveTo(17, -6, 14, 2);
+  ctx.quadraticCurveTo(8, 8, -2, 8);
+  ctx.quadraticCurveTo(-14, 9, -18, 4);
+  ctx.quadraticCurveTo(-20, -6, -12, -12);
+  ctx.quadraticCurveTo(-2, -17, 10, -14);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = outline; ctx.lineWidth = 1.6; ctx.stroke();
+  // belt band
+  ctx.fillStyle = navy;
+  ctx.beginPath();
+  ctx.moveTo(-12, -1); ctx.quadraticCurveTo(-15, 3, -13, 7);
+  ctx.lineTo(-7, 8); ctx.quadraticCurveTo(-9, 3, -7, -2);
+  ctx.closePath(); ctx.fill();
+  // cel shadow along the underside
+  ctx.fillStyle = "rgba(122,52,4,.22)";
+  ctx.beginPath();
+  ctx.moveTo(-16, 5); ctx.quadraticCurveTo(-2, 9, 12, 3);
+  ctx.quadraticCurveTo(-2, 12, -14, 8);
+  ctx.closePath(); ctx.fill();
+  // rim light on top
+  ctx.strokeStyle = "rgba(255,244,210,.95)";
+  ctx.lineWidth = 1.7; ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-11, -12); ctx.quadraticCurveTo(-1, -16.5, 9, -13.5);
+  ctx.stroke();
+
+  // forward arm: extended punch
+  ctx.fillStyle = gi;
+  ctx.beginPath(); ctx.ellipse(10, -9, 8.5, 6.5, .15, 0, 7); ctx.fill();
+  ctx.strokeStyle = outline; ctx.lineWidth = 1.3; ctx.stroke();
+  ctx.fillStyle = navy;
+  ctx.beginPath(); ctx.ellipse(15.5, -7.5, 4.4, 5.6, .2, 0, 7); ctx.fill();
+  ctx.strokeStyle = skin; ctx.lineWidth = 6.5; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(17, -8); ctx.lineTo(30, -11); ctx.stroke();
+  ctx.fillStyle = navy;
+  ctx.beginPath(); ctx.arc(28.5, -10.6, 4.8, 0, 7); ctx.fill();
+  ctx.fillStyle = skin;
+  ctx.beginPath(); ctx.arc(34.5, -12, 6, 0, 7); ctx.fill();
+  ctx.strokeStyle = outline; ctx.lineWidth = 1.3; ctx.stroke();
+  // ki glow on the leading fist
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  const fg = ctx.createRadialGradient(34.5, -12, 2, 34.5, -12, 20);
+  fg.addColorStop(0, "rgba(255,255,220,.9)");
+  fg.addColorStop(1, "rgba(255,220,90,0)");
+  ctx.fillStyle = fg;
+  ctx.beginPath(); ctx.arc(34.5, -12, 20, 0, 7); ctx.fill();
+  ctx.restore();
+
+  // head
+  ctx.save();
+  ctx.translate(17, -18);
+  ctx.rotate(-0.06);
+  ctx.scale(.95, .95);
+  drawHead(-7);        // hair violently swept back by the burst dive
+  ctx.restore();
+
+  ctx.restore();
+}
+
+/* ---------- main loop ---------- */
+function frame(now){
+  requestAnimationFrame(frame);
+  if (paused){ last = 0; return; }
+  if (!last){ last = now; return; }
+  let dt = (now - last)/1000;
+  last = now;
+  dt = Math.min(dt, 1/30);       // clamp big gaps (tab switches)
+  update(dt);
+  draw();
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
